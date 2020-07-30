@@ -60,6 +60,9 @@ used_workspaces_ids_ = None
 sorted_workspaces_ = None
 ws_filter_map_ = None
 ns_hotkeys_ = None
+copy_button_args_ = ('copy', False,
+                     thomasa88lib.get_fusion_deploy_folder() + '/Electron/UI/Resources/Icons/Copy',
+                     -1)
 
 class Hotkey:
     pass
@@ -106,11 +109,9 @@ def list_command_created_handler(args):
     inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
     inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
 
-    copy_input = inputs.addButtonRowCommandInput('copy', 'Copy', False)
+    copy_input = inputs.addButtonRowCommandInput('copy', 'Copy to clipboard', False)
     copy_input.isMultiSelectEnabled = False
-    copy_input.listItems.add('copy', False,
-                             thomasa88lib.get_fusion_deploy_folder() + '/Electron/UI/Resources/Icons/Copy',
-                             -1)
+    copy_input.listItems.add(*copy_button_args_)
 
 def get_data():
     # Build on every invocation, in case keys have changed
@@ -130,26 +131,50 @@ def get_data():
 def input_changed_handler(args):
     eventArgs = adsk.core.InputChangedEventArgs.cast(args)
 
+    inputs = eventArgs.inputs
     if eventArgs.input.id == 'list':
         return
-
-    inputs = eventArgs.inputs
-    only_user_input = inputs.itemById('only_user')
-    
-    workspace_input = inputs.itemById('workspace')
-    workspace_filter = ws_filter_map_[workspace_input.selectedItem.index]
     
     list_input = inputs.itemById('list')
-    list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter)
+    only_user_input = inputs.itemById('only_user')    
+    workspace_input = inputs.itemById('workspace')
+
+    workspace_filter = ws_filter_map_[workspace_input.selectedItem.index]
+
+    if eventArgs.input.id == 'copy':
+        copy_input = eventArgs.input
+        # Does not work: copy_input.listItems[0].isSelected = False
+        #copy_button = copy_input.listItems[0]
+        copy_input.listItems.clear()
+        copy_input.listItems.add(*copy_button_args_)
+        copy_to_clipboard(get_hotkeys_str(only_user_input.value, workspace_filter, html=False))
+    else:
+        # Update list
+        list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter)
 
 def execute_handler(args):
     # Force the termination of the command.
     adsk.terminate()
 
-def get_hotkeys_str(only_user=False, workspace_filter=None):
+def get_hotkeys_str(only_user=False, workspace_filter=None, html=True):
     # HTML table is hard to copy-paste. Use fixed-width font instead.
     # Supported HTML in QT: https://doc.qt.io/archives/qt-4.8/richtext-html-subset.html
-    string = '<pre>'
+
+    def header(text, text_underline='-'):
+        if html:
+            return f'<b>{text}</b><br>'
+        else:
+            return f'{text}\n{text_underline * len(text)}\n'
+        
+    def newline():
+        return '<br>' if html else '\n'
+
+    string = ''
+    if html:
+        string += '<pre>'
+    else:
+        string += header('Fusion 360 Keyboard Shortcuts', '=') + '\n'
+    
     for workspace_id, hotkeys in ns_hotkeys_.items():
         if workspace_filter and workspace_id != workspace_filter:
             continue
@@ -163,14 +188,24 @@ def get_hotkeys_str(only_user=False, workspace_filter=None):
             workspace_name = ui_.workspaces.itemById(workspace_id).name
         else:
             workspace_name = 'General'
-        string += f'<b>{workspace_name}</b><br>'
+
+        if html:
+            string += f'<b>{workspace_name}</b><br>'
+        else:
+            string += f'{workspace_name}\n{"=" * len(workspace_name)}\n'
+
         for hotkey in sorted(hotkeys, key=lambda  h: h.command_name):
             name = hotkey.command_name
             if not hotkey.is_default:
                 name += '*'
-            string += f'{name:30} {hotkey.key_sequence}<br>'
-        string += '<br>'
-    string += '</pre>'
+            string += f'{name:30} {hotkey.key_sequence}'
+            string += newline()
+        string += newline()
+    
+    if html:
+        string += '</pre>'
+    else:
+        string += '* = User-defined'
     return string
 
 def map_command_names(hotkeys):
@@ -284,7 +319,7 @@ def copy_to_clipboard(string):
     r = Tk()
     r.withdraw()
     r.clipboard_clear()
-    r.clipboard_append(str)
+    r.clipboard_append(string)
     r.update() # now it stays on the clipboard after the window is closed
     r.destroy()
 
