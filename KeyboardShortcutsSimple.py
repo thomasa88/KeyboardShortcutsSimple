@@ -111,6 +111,7 @@ def list_command_created_handler(args):
         ws_filter_map_.append(workspace.id)
     
     only_user_input = inputs.addBoolValueInput('only_user', 'Only user-defined          ', True, '', True)
+    shortcut_sort_input = inputs.addBoolValueInput('shortcut_sort', 'Sort by shortcut keys', True, '', False)
 
     inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
     inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
@@ -142,7 +143,8 @@ def input_changed_handler(args):
         return
     
     list_input = inputs.itemById('list')
-    only_user_input = inputs.itemById('only_user')    
+    only_user_input = inputs.itemById('only_user')
+    shortcut_sort_input = inputs.itemById('shortcut_sort')    
     workspace_input = inputs.itemById('workspace')
 
     workspace_filter = ws_filter_map_[workspace_input.selectedItem.index]
@@ -153,16 +155,19 @@ def input_changed_handler(args):
         #copy_button = copy_input.listItems[0]
         copy_input.listItems.clear()
         copy_input.listItems.add(*copy_button_args_)
-        copy_to_clipboard(get_hotkeys_str(only_user_input.value, workspace_filter, html=False))
+        copy_to_clipboard(get_hotkeys_str(only_user_input.value, workspace_filter,
+                                          sort_by_shortcut=shortcut_sort_input.value,
+                                          html=False))
     else:
         # Update list
-        list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter)
+        list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter,
+                                                   sort_by_shortcut=shortcut_sort_input.value)
 
 def destroy_handler(args):
     # Force the termination of the command.
     adsk.terminate()
 
-def get_hotkeys_str(only_user=False, workspace_filter=None, html=True):
+def get_hotkeys_str(only_user=False, workspace_filter=None, sort_by_shortcut=False, html=True):
     # HTML table is hard to copy-paste. Use fixed-width font instead.
     # Supported HTML in QT: https://doc.qt.io/archives/qt-4.8/richtext-html-subset.html
 
@@ -174,6 +179,12 @@ def get_hotkeys_str(only_user=False, workspace_filter=None, html=True):
         
     def newline():
         return '<br>' if html else '\n'
+
+    def sort_key(hotkey):
+        if not sort_by_shortcut:
+            return hotkey.command_name
+        else:
+            return hotkey.keyboard_key_sequence
 
     string = ''
     if html:
@@ -200,7 +211,7 @@ def get_hotkeys_str(only_user=False, workspace_filter=None, html=True):
         else:
             string += f'{workspace_name}\n{"=" * len(workspace_name)}\n'
 
-        for hotkey in sorted(hotkeys, key=lambda  h: h.command_name):
+        for hotkey in sorted(hotkeys, key=sort_key):
             name = hotkey.command_name
             if not hotkey.is_default:
                 name += '*'
