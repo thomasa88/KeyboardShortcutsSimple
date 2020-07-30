@@ -28,6 +28,7 @@ import operator
 import os
 import pathlib
 import sys
+from tkinter import Tk
 import xml.etree.ElementTree as ET
 
 NAME = 'Keyboard Shortcuts Simple'
@@ -55,12 +56,15 @@ cmd_def_workspaces_map_ = None
 used_workspaces_ids_ = None
 sorted_workspaces_ = None
 ws_filter_map_ = None
+ns_hotkeys_ = None
 
 class Hotkey:
     pass
 
 def list_command_created_handler(args):
     eventArgs = adsk.core.CommandCreatedEventArgs.cast(args)
+
+    get_data()    
 
     # The nifty thing with cast is that code completion then knows the object type
     cmd = adsk.core.Command.cast(args.command)
@@ -99,11 +103,26 @@ def list_command_created_handler(args):
     inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
     inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
 
+def get_data():
+    # Build on every invocation, in case keys have changed
+    # (Does not really matter for a Script)
+    build_cmd_def_workspaces_map()
+    global sorted_workspaces_
+    sorted_workspaces_ = sorted([ui_.workspaces.itemById(w_id) for w_id in used_workspaces_ids_],
+                                 key=lambda w: w.name)
+
+    global ns_hotkeys_
+    options_files = find_options_files()
+    # TODO: Pick the correct user/profile if there are multiple options files
+    hotkeys = parse_hotkeys(options_files[0])
+    hotkeys = map_command_names(hotkeys)
+    ns_hotkeys_ = namespace_group_hotkeys(hotkeys)
+
 def input_changed_handler(args):
     eventArgs = adsk.core.InputChangedEventArgs.cast(args)
 
     if eventArgs.input.id == 'list':
-        retun
+        return
 
     inputs = eventArgs.inputs
     only_user_input = inputs.itemById('only_user')
@@ -119,22 +138,16 @@ def execute_handler(args):
     adsk.terminate()
 
 def get_hotkeys_str(only_user=False, workspace_filter=None):
-    options_files = find_options_files()
-    # TODO: Pick the correct user/profile if there are multiple options files
-    hotkeys = parse_hotkeys(options_files[0])
-
-    # Make sure to filter before any de-dup operation
-    if only_user:
-        hotkeys = [hotkey for hotkey in hotkeys if not hotkey.is_default]
-
     # HTML table is hard to copy-paste. Use fixed-width font instead.
     # Supported HTML in QT: https://doc.qt.io/archives/qt-4.8/richtext-html-subset.html
     string = '<pre>'
-    
-    hotkeys = map_command_names(hotkeys)
-    ns_hotkeys = namespace_group_hotkeys(hotkeys)
-    for workspace_id, hotkeys in ns_hotkeys.items():
+    for workspace_id, hotkeys in ns_hotkeys_.items():
         if workspace_filter and workspace_id != workspace_filter:
+            continue
+        # Make sure to filter before any de-dup operation
+        if only_user:
+            hotkeys = [hotkey for hotkey in hotkeys if not hotkey.is_default]
+        if not hotkeys:
             continue
         hotkeys = deduplicate_hotkeys(hotkeys)
         if workspace_id != UNKNOWN_WORKSPACE:
@@ -257,6 +270,15 @@ def parse_hotkeys(options_file):
             hotkeys.append(hotkey)
     return hotkeys
 
+def copy_to_clipboard(string):
+    # From https://stackoverflow.com/a/25476462/106019
+    r = Tk()
+    r.withdraw()
+    r.clipboard_clear()
+    r.clipboard_append(str)
+    r.update() # now it stays on the clipboard after the window is closed
+    r.destroy()
+
 def delete_command_def():
     cmd_def = ui_.commandDefinitions.itemById(LIST_CMD_ID)
     if cmd_def:
@@ -279,12 +301,6 @@ def run(context):
         events_manager_.add_handler(list_cmd_def_.commandCreated,
                                     adsk.core.CommandCreatedEventHandler,
                                     list_command_created_handler)
-
-        build_cmd_def_workspaces_map()
-
-        global sorted_workspaces_
-        sorted_workspaces_ = sorted([ui_.workspaces.itemById(w_id) for w_id in used_workspaces_ids_],
-                                    key=lambda w: w.name)
 
         list_cmd_def_.execute()
 
