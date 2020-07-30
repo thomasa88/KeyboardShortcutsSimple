@@ -41,10 +41,16 @@ sys.path.append(FILE_DIR)
 import thomasa88lib_KeyboardShortcutsSimple as thomasa88lib
 import thomasa88lib_KeyboardShortcutsSimple.events as thomasa88lib_events
 
+if os.name == 'nt':
+    import windows as platform
+else:
+    import mac as platform
+
 # Force modules to be fresh during development
 import importlib
 importlib.reload(thomasa88lib)
 importlib.reload(thomasa88lib_events)
+importlib.reload(platform)
 
 sys.path.remove(FILE_DIR)
 
@@ -198,7 +204,7 @@ def get_hotkeys_str(only_user=False, workspace_filter=None, html=True):
             name = hotkey.command_name
             if not hotkey.is_default:
                 name += '*'
-            string += f'{name:30} {hotkey.key_sequence}'
+            string += f'{name:30} {hotkey.keyboard_key_sequence}'
             string += newline()
         string += newline()
     
@@ -271,7 +277,7 @@ def deduplicate_hotkeys(hotkeys):
         # Using command_name instead of command_id, as the names duplicate
         hid = (hotkey.command_name, hotkey.command_argument)
         if hid in ids:
-            #print("DUP: ", hotkey.command_id, hotkey.command_argument, hotkey.key_sequence)
+            #print("DUP: ", hotkey.command_id, hotkey.command_argument, hotkey.fusion_key_sequence)
             continue
         ids.add(hid)
         filtered.append(hotkey)
@@ -299,18 +305,21 @@ def parse_hotkeys(options_file):
     for h in value['hotkeys']:
         if 'hotkey_sequence' not in h:
             continue
-        key_sequence = h['hotkey_sequence']
+        fusion_key_sequence = h['hotkey_sequence']
 
         # Move data extraction to separate function?
-        # E.g. ! is used for shift+1, so we need to pull out the virtual keycode, to get just one key
-        #vk, _ = fusion_key_to_vk(key_sequence)
+        # E.g. ! is used for shift+1, so we need to pull out the virtual keycode,
+        # to get the actual key that the user needs to press. (E.g. '=' is placed
+        # on different keys on different keyboards and some use shift.)
+        keyboard_key_sequence = platform.fusion_key_to_keyboard_key(fusion_key_sequence)
 
         for hotkey_command in h['commands']:
             hotkey = Hotkey()
             hotkey.command_id = hotkey_command['command_id']
             hotkey.command_argument = hotkey_command['command_argument']
             hotkey.is_default = hotkey_command['isDefault']
-            hotkey.key_sequence = key_sequence
+            hotkey.fusion_key_sequence = fusion_key_sequence
+            hotkey.keyboard_key_sequence = keyboard_key_sequence
             hotkeys.append(hotkey)
     return hotkeys
 
