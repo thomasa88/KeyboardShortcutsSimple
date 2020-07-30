@@ -64,17 +64,38 @@ def list_command_created_handler(args):
     cmd.isOKButtonVisible = False
     cmd.setDialogMinimumSize(500, 500)
 
-    inputs = cmd.commandInputs
-    inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(), 30, False)
+    events_manager_.add_handler(cmd.inputChanged,
+                                adsk.core.InputChangedEventHandler,
+                                input_changed_handler)
 
-def get_hotkeys_str():
+    inputs = cmd.commandInputs
+    only_user_input = inputs.addBoolValueInput('only_user', 'Only user-defined          ', True, '', True)
+    inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
+    inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
+
+def input_changed_handler(args):
+    eventArgs = adsk.core.InputChangedEventArgs.cast(args)
+
+    if eventArgs.input.id != 'only_user':
+        return
+    only_user_input = adsk.core.BoolValueCommandInput.cast(eventArgs.input)
+
+    list_input = eventArgs.inputs.itemById('list')
+    list_input.formattedText = get_hotkeys_str(only_user_input.value)
+
+def get_hotkeys_str(only_user=False):
     options_files = find_options_files()
     # TODO: Pick the correct user/profile if there are multiple options files
     hotkeys = parse_hotkeys(options_files[0])
+
+    # Make sure to filter before any de-dup operation
+    if only_user:
+        hotkeys = [hotkey for hotkey in hotkeys if not hotkey.is_default]
+
     # HTML table is hard to copy-paste. Use fixed-width font instead.
     # Supported HTML in QT: https://doc.qt.io/archives/qt-4.8/richtext-html-subset.html
     string = '<pre>'
-    build_cmd_def_workspaces_map()
+    
     hotkeys = map_command_names(hotkeys)
     ns_hotkeys = namespace_group_hotkeys(hotkeys)
     for workspace_id, hotkeys in ns_hotkeys.items():
@@ -85,7 +106,10 @@ def get_hotkeys_str():
             workspace_name = 'General'
         string += f'<b>{workspace_name}</b><br>'
         for hotkey in sorted(hotkeys, key=lambda  h: h.command_name):
-            string += f'{hotkey.command_name:30} {hotkey.key_sequence}<br>'
+            name = hotkey.command_name
+            if not hotkey.is_default:
+                name += '*'
+            string += f'{name:30} {hotkey.key_sequence}<br>'
         string += '<br>'
     string += '</pre>'
     return string
@@ -151,7 +175,7 @@ def deduplicate_hotkeys(hotkeys):
         # Using command_name instead of command_id, as the names duplicate
         hid = (hotkey.command_name, hotkey.command_argument)
         if hid in ids:
-            print("DUP: ", hotkey.command_id, hotkey.command_argument, hotkey.key_sequence)
+            #print("DUP: ", hotkey.command_id, hotkey.command_argument, hotkey.key_sequence)
             continue
         ids.add(hid)
         filtered.append(hotkey)
@@ -217,6 +241,7 @@ def run(context):
                                     adsk.core.CommandCreatedEventHandler,
                                     list_command_created_handler)
 
+        build_cmd_def_workspaces_map()
         list_cmd_def_.execute()
 
         # Keep the script running.
