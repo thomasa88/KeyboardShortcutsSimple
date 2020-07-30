@@ -35,15 +35,18 @@ NAME = 'Keyboard Shortcuts Simple'
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-if FILE_DIR not in sys.path:
-    sys.path.append(FILE_DIR)
-import thomasa88lib, thomasa88lib.events, thomasa88lib.timeline
+sys.path.append(FILE_DIR)
+# Must import lib as unique name, to avoid collision with other versions
+# loaded by other add-ins
+import thomasa88lib_KeyboardShortcutsSimple as thomasa88lib
+import thomasa88lib_KeyboardShortcutsSimple.events as thomasa88lib_events
 
 # Force modules to be fresh during development
 import importlib
 importlib.reload(thomasa88lib)
-importlib.reload(thomasa88lib.events)
-importlib.reload(thomasa88lib.timeline)
+importlib.reload(thomasa88lib_events)
+
+sys.path.remove(FILE_DIR)
 
 LIST_CMD_ID = 'thomasa88_keyboardShortcutsSimpleList'
 UNKNOWN_WORKSPACE = 'UNKNOWN'
@@ -102,6 +105,12 @@ def list_command_created_handler(args):
 
     inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
     inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
+
+    copy_input = inputs.addButtonRowCommandInput('copy', 'Copy', False)
+    copy_input.isMultiSelectEnabled = False
+    copy_input.listItems.add('copy', False,
+                             thomasa88lib.get_fusion_deploy_folder() + '/Electron/UI/Resources/Icons/Copy',
+                             -1)
 
 def get_data():
     # Build on every invocation, in case keys have changed
