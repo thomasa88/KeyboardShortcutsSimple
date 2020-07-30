@@ -24,6 +24,7 @@ import adsk.core, adsk.fusion, adsk.cam, traceback
 from collections import defaultdict
 import ctypes
 import json
+import operator
 import os
 import pathlib
 import sys
@@ -44,12 +45,16 @@ importlib.reload(thomasa88lib.events)
 importlib.reload(thomasa88lib.timeline)
 
 LIST_CMD_ID = 'thomasa88_keyboardShortcutsSimpleList'
+UNKNOWN_WORKSPACE = 'UNKNOWN'
 
 app_ = None
 ui_ = None
 events_manager_ = thomasa88lib.events.EventsManger(NAME)
 list_cmd_def_ = None
 cmd_def_workspaces_map_ = None
+used_workspaces_ = None
+sorted_workspaces_ = None
+ws_filter_map_ = None
 
 class Hotkey:
     pass
@@ -67,23 +72,51 @@ def list_command_created_handler(args):
     events_manager_.add_handler(cmd.inputChanged,
                                 adsk.core.InputChangedEventHandler,
                                 input_changed_handler)
+    events_manager_.add_handler(cmd.execute,
+                                adsk.core.CommandEventHandler,
+                                execute_handler)
 
     inputs = cmd.commandInputs
+
+    workspace_input = inputs.addDropDownCommandInput('workspace',
+                                                     'Show',
+                                                     adsk.core.DropDownStyles.LabeledIconDropDownStyle)
+    global ws_filter_map_
+    ws_filter_map_ = []
+    workspace_input.listItems.add('All', True, '', -1)
+    ws_filter_map_.append(None)
+    workspace_input.listItems.addSeparator(-1)
+    workspace_input.listItems.add('General', False, '', -1)
+    ws_filter_map_.append(UNKNOWN_WORKSPACE)
+    for workspace_id, workspace_name in sorted_workspaces_:
+        workspace_input.listItems.add(workspace_name, False, '', -1)
+        ws_filter_map_.append(workspace_id)
+    
     only_user_input = inputs.addBoolValueInput('only_user', 'Only user-defined          ', True, '', True)
+
     inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
     inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
 
 def input_changed_handler(args):
     eventArgs = adsk.core.InputChangedEventArgs.cast(args)
 
-    if eventArgs.input.id != 'only_user':
-        return
-    only_user_input = adsk.core.BoolValueCommandInput.cast(eventArgs.input)
+    if eventArgs.input.id == 'list':
+        retun
 
-    list_input = eventArgs.inputs.itemById('list')
-    list_input.formattedText = get_hotkeys_str(only_user_input.value)
+    inputs = eventArgs.inputs
+    only_user_input = inputs.itemById('only_user')
+    
+    workspace_input = inputs.itemById('workspace')
+    workspace_filter = ws_filter_map_[workspace_input.selectedItem.index]
+    
+    list_input = inputs.itemById('list')
+    list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter)
 
-def get_hotkeys_str(only_user=False):
+def execute_handler(args):
+    # Force the termination of the command.
+    adsk.terminate()
+
+def get_hotkeys_str(only_user=False, workspace_filter=None):
     options_files = find_options_files()
     # TODO: Pick the correct user/profile if there are multiple options files
     hotkeys = parse_hotkeys(options_files[0])
@@ -99,8 +132,10 @@ def get_hotkeys_str(only_user=False):
     hotkeys = map_command_names(hotkeys)
     ns_hotkeys = namespace_group_hotkeys(hotkeys)
     for workspace_id, hotkeys in ns_hotkeys.items():
+        if workspace_filter and workspace_id != workspace_filter:
+            continue
         hotkeys = deduplicate_hotkeys(hotkeys)
-        if workspace_id:
+        if workspace_id != UNKNOWN_WORKSPACE:
             workspace_name = ui_.workspaces.itemById(workspace_id).name
         else:
             workspace_name = 'General'
@@ -132,13 +167,15 @@ def namespace_group_hotkeys(hotkeys):
         workspaces = find_cmd_workspaces(hotkey.command_id)
         for workspace in workspaces:
             ns_hotkeys[workspace].append(hotkey)
-        else:
-            ns_hotkeys[None].append(hotkey)
+        if not workspaces:
+            ns_hotkeys[UNKNOWN_WORKSPACE].append(hotkey)
     return ns_hotkeys
 
 def build_cmd_def_workspaces_map():
     global cmd_def_workspaces_map_
+    global used_workspaces_
     cmd_def_workspaces_map_ = defaultdict(set)
+    used_workspaces_ = set()
     for workspace in ui_.workspaces:
         try:
             if workspace.productType == '':
@@ -146,27 +183,26 @@ def build_cmd_def_workspaces_map():
         except Exception:
             continue
         for panel in workspace.toolbarPanels:
-            control = explore_control(panel.controls, workspace)
-            if control:
-                return control
-    return None
+            explore_controls(panel.controls, workspace)
+            
 
-def explore_control(controls, workspace):
+def explore_controls(controls, workspace):
     for control in controls:
         if control.objectType == adsk.core.CommandControl.classType():
             try:
                 cmd_id = control.commandDefinition.id
                 cmd_def_workspaces_map_[cmd_id].add(workspace.id)
+                used_workspaces_.add(workspace.id)
                 #print("READ", cmd_id)
             except Exception as e:
                 #print(f"Could not read commandDefintion for {control.id}", control)
                 pass
         elif control.objectType == adsk.core.DropDownControl.classType():
-            return explore_control(control.controls, workspace)
+            return explore_controls(control.controls, workspace)
     return None
 
 def find_cmd_workspaces(cmd_id):
-    return cmd_def_workspaces_map_.get(cmd_id, [])
+    return cmd_def_workspaces_map_.get(cmd_id, [ UNKNOWN_WORKSPACE ])
 
 def deduplicate_hotkeys(hotkeys):
     ids = set()
@@ -242,6 +278,12 @@ def run(context):
                                     list_command_created_handler)
 
         build_cmd_def_workspaces_map()
+
+        global sorted_workspaces_
+        sorted_workspaces_ = sorted([(w_id, ui_.workspaces.itemById(w_id).name)
+                                     for w_id in used_workspaces_],
+                                    key=operator.itemgetter(1))
+
         list_cmd_def_.execute()
 
         # Keep the script running.
