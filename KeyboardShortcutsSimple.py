@@ -59,7 +59,7 @@ UNKNOWN_WORKSPACE = 'UNKNOWN'
 
 app_ = None
 ui_ = None
-events_manager_ = thomasa88lib.events.EventsManger(NAME)
+events_manager_ = thomasa88lib.events.EventsManager(NAME)
 list_cmd_def_ = None
 cmd_def_workspaces_map_ = None
 used_workspaces_ids_ = None
