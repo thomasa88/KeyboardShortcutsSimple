@@ -1,0 +1,10 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"author":	"Thomas Axelsson",
+	"description":	{
+		"":	"Lists all keyboard shortcuts"
+	},
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
