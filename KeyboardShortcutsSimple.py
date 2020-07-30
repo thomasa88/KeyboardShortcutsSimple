@@ -52,7 +52,7 @@ ui_ = None
 events_manager_ = thomasa88lib.events.EventsManger(NAME)
 list_cmd_def_ = None
 cmd_def_workspaces_map_ = None
-used_workspaces_ = None
+used_workspaces_ids_ = None
 sorted_workspaces_ = None
 ws_filter_map_ = None
 
@@ -85,12 +85,14 @@ def list_command_created_handler(args):
     ws_filter_map_ = []
     workspace_input.listItems.add('All', True, '', -1)
     ws_filter_map_.append(None)
-    workspace_input.listItems.addSeparator(-1)
+    #workspace_input.listItems.addSeparator(-1)
+    workspace_input.listItems.add('----------------------------------', False, '', -1)
+    ws_filter_map_.append('SEPARATOR')
     workspace_input.listItems.add('General', False, '', -1)
     ws_filter_map_.append(UNKNOWN_WORKSPACE)
-    for workspace_id, workspace_name in sorted_workspaces_:
-        workspace_input.listItems.add(workspace_name, False, '', -1)
-        ws_filter_map_.append(workspace_id)
+    for workspace in sorted_workspaces_:
+        workspace_input.listItems.add(workspace.name, False, '', -1)
+        ws_filter_map_.append(workspace.id)
     
     only_user_input = inputs.addBoolValueInput('only_user', 'Only user-defined          ', True, '', True)
 
@@ -173,9 +175,9 @@ def namespace_group_hotkeys(hotkeys):
 
 def build_cmd_def_workspaces_map():
     global cmd_def_workspaces_map_
-    global used_workspaces_
+    global used_workspaces_ids_
     cmd_def_workspaces_map_ = defaultdict(set)
-    used_workspaces_ = set()
+    used_workspaces_ids_ = set()
     for workspace in ui_.workspaces:
         try:
             if workspace.productType == '':
@@ -187,16 +189,17 @@ def build_cmd_def_workspaces_map():
             
 
 def explore_controls(controls, workspace):
+    global used_workspaces_ids_
     for control in controls:
         if control.objectType == adsk.core.CommandControl.classType():
             try:
                 cmd_id = control.commandDefinition.id
-                cmd_def_workspaces_map_[cmd_id].add(workspace.id)
-                used_workspaces_.add(workspace.id)
-                #print("READ", cmd_id)
-            except Exception as e:
+            except RuntimeError as e:
                 #print(f"Could not read commandDefintion for {control.id}", control)
-                pass
+                continue
+            cmd_def_workspaces_map_[cmd_id].add(workspace.id)
+            used_workspaces_ids_.add(workspace.id)
+            #print("READ", cmd_id)
         elif control.objectType == adsk.core.DropDownControl.classType():
             return explore_controls(control.controls, workspace)
     return None
@@ -280,9 +283,8 @@ def run(context):
         build_cmd_def_workspaces_map()
 
         global sorted_workspaces_
-        sorted_workspaces_ = sorted([(w_id, ui_.workspaces.itemById(w_id).name)
-                                     for w_id in used_workspaces_],
-                                    key=operator.itemgetter(1))
+        sorted_workspaces_ = sorted([ui_.workspaces.itemById(w_id) for w_id in used_workspaces_ids_],
+                                    key=lambda w: w.name)
 
         list_cmd_def_.execute()
 
