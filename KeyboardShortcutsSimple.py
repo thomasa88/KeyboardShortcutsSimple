@@ -71,20 +71,23 @@ def get_hotkeys_str():
     options_files = find_options_files()
     # TODO: Pick the correct user/profile if there are multiple options files
     hotkeys = parse_hotkeys(options_files[0])
-    string = '<table>'
+    # HTML table is hard to copy-paste. Use fixed-width font instead.
+    # Supported HTML in QT: https://doc.qt.io/archives/qt-4.8/richtext-html-subset.html
+    string = '<pre>'
     build_cmd_def_workspaces_map()
     hotkeys = map_command_names(hotkeys)
     ns_hotkeys = namespace_group_hotkeys(hotkeys)
-    #gör dedup i workspaces!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
     for workspace_id, hotkeys in ns_hotkeys.items():
+        hotkeys = deduplicate_hotkeys(hotkeys)
         if workspace_id:
             workspace_name = ui_.workspaces.itemById(workspace_id).name
         else:
             workspace_name = 'General'
-        string += f'<tr><td><b>{workspace_name}<b></td><td></td></tr>'
+        string += f'<b>{workspace_name}</b><br>'
         for hotkey in sorted(hotkeys, key=lambda  h: h.command_name):
-            string += f'<tr><td>{hotkey.command_name}</td><td> {hotkey.key_sequence}</td></tr>'
-    string += '</table>'
+            string += f'{hotkey.command_name:30} {hotkey.key_sequence}<br>'
+        string += '<br>'
+    string += '</pre>'
     return string
 
 def map_command_names(hotkeys):
