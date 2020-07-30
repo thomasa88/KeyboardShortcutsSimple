@@ -35,24 +35,23 @@ NAME = 'Keyboard Shortcuts Simple'
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-sys.path.append(FILE_DIR)
-# Must import lib as unique name, to avoid collision with other versions
-# loaded by other add-ins
-import thomasa88lib_KeyboardShortcutsSimple as thomasa88lib
-import thomasa88lib_KeyboardShortcutsSimple.events as thomasa88lib_events
 
+# Import relative path to avoid namespace pollution
+from .thomasa88lib import utils
+from .thomasa88lib import events
+
+from .version import VERSION
 if os.name == 'nt':
-    import windows as platform
+    from . import windows as platform
 else:
-    import mac as platform
+    from . import mac as platform
 
 # Force modules to be fresh during development
 import importlib
-importlib.reload(thomasa88lib)
-importlib.reload(thomasa88lib_events)
+importlib.reload(thomasa88lib.utils)
+importlib.reload(thomasa88lib.events)
 importlib.reload(platform)
 
-sys.path.remove(FILE_DIR)
 
 LIST_CMD_ID = 'thomasa88_keyboardShortcutsSimpleList'
 UNKNOWN_WORKSPACE = 'UNKNOWN'
@@ -67,7 +66,7 @@ sorted_workspaces_ = None
 ws_filter_map_ = None
 ns_hotkeys_ = None
 copy_button_args_ = ('copy', False,
-                     thomasa88lib.get_fusion_deploy_folder() + '/Electron/UI/Resources/Icons/Copy',
+                     thomasa88lib.utils.get_fusion_deploy_folder() + '/Electron/UI/Resources/Icons/Copy',
                      -1)
 
 class Hotkey:
@@ -359,7 +358,7 @@ def run(context):
         ui_.terminateActiveCommand()
         delete_command_def()
         list_cmd_def_ = ui_.commandDefinitions.addButtonDefinition(LIST_CMD_ID,
-                                                                   NAME,
+                                                                   f'{NAME} {VERSION}',
                                                                    '',)
 
         events_manager_.add_handler(list_cmd_def_.commandCreated,
