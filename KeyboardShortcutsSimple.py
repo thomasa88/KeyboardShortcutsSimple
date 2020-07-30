@@ -88,9 +88,9 @@ def list_command_created_handler(args):
     events_manager_.add_handler(cmd.inputChanged,
                                 adsk.core.InputChangedEventHandler,
                                 input_changed_handler)
-    events_manager_.add_handler(cmd.execute,
+    events_manager_.add_handler(cmd.destroy,
                                 adsk.core.CommandEventHandler,
-                                execute_handler)
+                                destroy_handler)
 
     inputs = cmd.commandInputs
 
@@ -158,7 +158,7 @@ def input_changed_handler(args):
         # Update list
         list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter)
 
-def execute_handler(args):
+def destroy_handler(args):
     # Force the termination of the command.
     adsk.terminate()
 
