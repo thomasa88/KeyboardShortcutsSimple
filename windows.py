@@ -26,6 +26,8 @@ import ctypes
 # Virtual Keycodes are available here:
 # https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 FUSION_VK_MAPPING = { 'Slash': ord('/'),
+                      'Equal': ord('='),
+                      'Question': ord('?'),
                       'backspace': 0x08,
                       'delete': 0x2e,
                       'escape': 0x1b,
@@ -63,6 +65,7 @@ def fusion_key_to_keyboard_key(key_sequence):
     vk, shift_state = fusion_key_to_vk(keys[-1])
 
     # Get the scancode from the virtual key and then get the label from the scan code
+    # The scan code represents the actual physical key
     MAPVK_VK_TO_VSC_EX = 4
     keyname_buf = ctypes.create_unicode_buffer(32)
     input_locale = ctypes.windll.User32.GetKeyboardLayout(0)

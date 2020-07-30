@@ -95,7 +95,7 @@ def list_command_created_handler(args):
     inputs = cmd.commandInputs
 
     workspace_input = inputs.addDropDownCommandInput('workspace',
-                                                     'Show',
+                                                     'Workspace',
                                                      adsk.core.DropDownStyles.LabeledIconDropDownStyle)
     global ws_filter_map_
     ws_filter_map_ = []
