@@ -39,6 +39,7 @@ FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 # Import relative path to avoid namespace pollution
 from .thomasa88lib import utils
 from .thomasa88lib import events
+from .thomasa88lib import error
 
 from .version import VERSION
 if os.name == 'nt':
@@ -50,6 +51,7 @@ else:
 import importlib
 importlib.reload(thomasa88lib.utils)
 importlib.reload(thomasa88lib.events)
+importlib.reload(thomasa88lib.error)
 importlib.reload(platform)
 
 
@@ -58,7 +60,8 @@ UNKNOWN_WORKSPACE = 'UNKNOWN'
 
 app_ = None
 ui_ = None
-events_manager_ = thomasa88lib.events.EventsManager(NAME)
+error_catcher_ = thomasa88lib.error.ErrorCatcher(msgbox_in_debug=False)
+events_manager_ = thomasa88lib.events.EventsManager(error_catcher_)
 list_cmd_def_ = None
 cmd_def_workspaces_map_ = None
 used_workspaces_ids_ = None
@@ -75,14 +78,15 @@ class Hotkey:
 def list_command_created_handler(args):
     eventArgs = adsk.core.CommandCreatedEventArgs.cast(args)
 
-    get_data()    
+    get_data()
 
     # The nifty thing with cast is that code completion then knows the object type
     cmd = adsk.core.Command.cast(args.command)
     cmd.isRepeatable = False
     cmd.isExecutedWhenPreEmpted = False
     cmd.isOKButtonVisible = False
-    cmd.setDialogMinimumSize(500, 500)
+    cmd.setDialogMinimumSize(350, 200)
+    cmd.setDialogInitialSize(400, 500)
 
     events_manager_.add_handler(cmd.inputChanged,
                                 adsk.core.InputChangedEventHandler,
@@ -165,6 +169,7 @@ def input_changed_handler(args):
 def destroy_handler(args):
     # Force the termination of the command.
     adsk.terminate()
+    events_manager_.clean_up()
 
 def get_hotkeys_str(only_user=False, workspace_filter=None, sort_by_shortcut=False, html=True):
     # HTML table is hard to copy-paste. Use fixed-width font instead.
@@ -259,7 +264,6 @@ def build_cmd_def_workspaces_map():
             continue
         for panel in workspace.toolbarPanels:
             explore_controls(panel.controls, workspace)
-            
 
 def explore_controls(controls, workspace):
     global used_workspaces_ids_
@@ -351,11 +355,12 @@ def run(context):
     global app_
     global ui_
     global list_cmd_def_
-    try:
+    with error_catcher_:
         app_ = adsk.core.Application.get()
         ui_ = app_.userInterface
         
-        ui_.terminateActiveCommand()
+        if ui_.activeCommand == LIST_CMD_ID:
+            ui_.terminateActiveCommand()
         delete_command_def()
         list_cmd_def_ = ui_.commandDefinitions.addButtonDefinition(LIST_CMD_ID,
                                                                    f'{NAME} {VERSION}',
@@ -369,6 +374,3 @@ def run(context):
 
         # Keep the script running.
         adsk.autoTerminate(False)
-    except:
-        if ui_:
-            ui_.messageBox('Failed:\n{}'.format(traceback.format_exc()))
