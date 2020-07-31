@@ -23,4 +23,5 @@
 
 def fusion_key_to_keyboard_key(key_sequence):
     # TODO
-    return key_sequence
+    keys = key_sequence.split('+')
+    return key_sequence, keys[-1]

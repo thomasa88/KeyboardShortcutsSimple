@@ -159,19 +159,19 @@ def input_changed_handler(args):
         copy_input.listItems.clear()
         copy_input.listItems.add(*copy_button_args_)
         copy_to_clipboard(get_hotkeys_str(only_user_input.value, workspace_filter,
-                                          sort_by_shortcut=shortcut_sort_input.value,
+                                          sort_by_key=shortcut_sort_input.value,
                                           html=False))
     else:
         # Update list
         list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter,
-                                                   sort_by_shortcut=shortcut_sort_input.value)
+                                                   sort_by_key=shortcut_sort_input.value)
 
 def destroy_handler(args):
     # Force the termination of the command.
     adsk.terminate()
     events_manager_.clean_up()
 
-def get_hotkeys_str(only_user=False, workspace_filter=None, sort_by_shortcut=False, html=True):
+def get_hotkeys_str(only_user=False, workspace_filter=None, sort_by_key=False, html=True):
     # HTML table is hard to copy-paste. Use fixed-width font instead.
     # Supported HTML in QT: https://doc.qt.io/archives/qt-4.8/richtext-html-subset.html
 
@@ -185,10 +185,10 @@ def get_hotkeys_str(only_user=False, workspace_filter=None, sort_by_shortcut=Fal
         return '<br>' if html else '\n'
 
     def sort_key(hotkey):
-        if not sort_by_shortcut:
-            return hotkey.command_name
+        if sort_by_key:
+            return (hotkey.keyboard_base_key, hotkey.keyboard_key_sequence)
         else:
-            return hotkey.keyboard_key_sequence
+            return hotkey.command_name
 
     string = ''
     if html:
@@ -324,7 +324,7 @@ def parse_hotkeys(options_file):
         # E.g. ! is used for shift+1, so we need to pull out the virtual keycode,
         # to get the actual key that the user needs to press. (E.g. '=' is placed
         # on different keys on different keyboards and some use shift.)
-        keyboard_key_sequence = platform.fusion_key_to_keyboard_key(fusion_key_sequence)
+        keyboard_key_sequence, keyboard_base_key = platform.fusion_key_to_keyboard_key(fusion_key_sequence)
 
         for hotkey_command in h['commands']:
             hotkey = Hotkey()
@@ -333,6 +333,7 @@ def parse_hotkeys(options_file):
             hotkey.is_default = hotkey_command['isDefault']
             hotkey.fusion_key_sequence = fusion_key_sequence
             hotkey.keyboard_key_sequence = keyboard_key_sequence
+            hotkey.keyboard_base_key = keyboard_base_key
             hotkeys.append(hotkey)
     return hotkeys
 

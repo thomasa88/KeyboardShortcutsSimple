@@ -78,7 +78,7 @@ def fusion_key_to_keyboard_key(key_sequence):
         print(f"Failed to get name for vk 0x{vk:x}: {ctypes.GetLastError()}")
     
     keys[-1] = label
-    return '+'.join(keys)
+    return '+'.join(keys), label
 
 def fusion_key_to_vk(fusion_key):
     if len(fusion_key) == 1:
