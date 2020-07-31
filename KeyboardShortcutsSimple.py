@@ -278,8 +278,7 @@ def explore_controls(controls, workspace):
             used_workspaces_ids_.add(workspace.id)
             #print("READ", cmd_id)
         elif control.objectType == adsk.core.DropDownControl.classType():
-            return explore_controls(control.controls, workspace)
-    return None
+            explore_controls(control.controls, workspace)
 
 def find_cmd_workspaces(cmd_id):
     return cmd_def_workspaces_map_.get(cmd_id, [ UNKNOWN_WORKSPACE ])
