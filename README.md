@@ -1,6 +1,6 @@
 # KeyboardShortcutsSimple
 
-A Fusion 360 script for showing all assigned keyboard shortcuts.
+A Fusion 360 script for showing all assigned keyboard shortcuts. Use it to share setups and to find free keys (sort by shortcut keys).
 
 ![](screenshot.png)
 
