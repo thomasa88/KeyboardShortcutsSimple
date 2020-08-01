@@ -132,9 +132,8 @@ def get_data():
                                  key=lambda w: w.name)
 
     global ns_hotkeys_
-    options_files = find_options_files()
-    # TODO: Pick the correct user/profile if there are multiple options files
-    hotkeys = parse_hotkeys(options_files[0])
+    options_file = find_options_file()
+    hotkeys = parse_hotkeys(options_file)
     hotkeys = map_command_names(hotkeys)
     ns_hotkeys_ = namespace_group_hotkeys(hotkeys)
 
@@ -296,7 +295,7 @@ def deduplicate_hotkeys(hotkeys):
         filtered.append(hotkey)
     return filtered
 
-def find_options_files():
+def find_options_file():
     CSIDL_APPDATA = 26
     SHGFP_TYPE_CURRENT = 0
     # SHGetFolderPath is deprecated, but SHGetKnownFolderPath is much more cumbersome to use.
@@ -305,9 +304,8 @@ def find_options_files():
     ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_APPDATA, 0, SHGFP_TYPE_CURRENT, roaming_path_buf)
 
     roaming_path = pathlib.Path(roaming_path_buf.value)
-    options_path = roaming_path / 'Autodesk' / 'Neutron Platform' / 'Options'
-    options_files = list(options_path.glob('*/NGlobalOptions.xml'))
-    return options_files
+    options_path = roaming_path / 'Autodesk' / 'Neutron Platform' / 'Options' / app_.userId / 'NGlobalOptions.xml'
+    return options_path
 
 def parse_hotkeys(options_file):
     hotkeys = []
