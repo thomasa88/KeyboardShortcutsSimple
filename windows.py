@@ -22,6 +22,7 @@
 # Platform-specific code
 
 import ctypes
+import pathlib
 
 # Virtual Keycodes are available here:
 # https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
@@ -93,3 +94,16 @@ def fusion_key_to_vk(fusion_key):
     keycode = ret & 0xff
     shift_state = ret >> 8
     return keycode, shift_state
+
+def find_options_file(app):
+    CSIDL_APPDATA = 26
+    SHGFP_TYPE_CURRENT = 0
+    # SHGetFolderPath is deprecated, but SHGetKnownFolderPath is much more cumbersome to use.
+    # Could just use win32com in that case, to simplify things.
+    roaming_path_buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+
+    ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_APPDATA, 0, SHGFP_TYPE_CURRENT, roaming_path_buf)
+
+    roaming_path = pathlib.Path(roaming_path_buf.value)
+    options_path = roaming_path / 'Autodesk' / 'Neutron Platform' / 'Options' / app.userId / 'NGlobalOptions.xml'
+    return options_path

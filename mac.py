@@ -21,7 +21,32 @@
 
 # Platform-specific code
 
+import pathlib
+
 def fusion_key_to_keyboard_key(key_sequence):
     # TODO
     keys = key_sequence.split('+')
     return key_sequence, keys[-1]
+
+def find_options_file(app):
+    # Seems that Macs can have the files in different locations:
+    # https://forums.autodesk.com/t5/fusion-360-support/cannot-find-fuision360-documents-locally-in-macos/td-p/8324149
+
+    # * /Users/<username>/Library/Application Support/Autodesk
+    # * /Users/<username>/Library/Containers/com.autodesk.mas.fusion360/Data/Library/Application Support/Autodesk
+    # append: /Neutron Platform/Options/<user id>\<file.xml>
+    # Idea: If neededn, check where our add-in is running to determine which path to use.
+
+    autodesk_paths = [
+        pathlib.Path.home() / 'Library/Application Support/Autodesk',
+        pathlib.Path.home() / 'Library/Containers/com.autodesk.mas.fusion360/Data/Library/Application Support/Autodesk'
+    ]
+
+    for autodesk_path in autodesk_paths:
+        if autodesk_path.exists():
+            break
+    else:
+        raise Exception("Could not find Autodesk directory")
+
+    options_path = autodesk_path / 'Neutron Platform' / 'Options' / app.userId / 'NGlobalOptions.xml'
+    return options_path

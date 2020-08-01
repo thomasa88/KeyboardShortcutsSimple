@@ -22,11 +22,9 @@
 import adsk.core, adsk.fusion, adsk.cam, traceback
 
 from collections import defaultdict
-import ctypes
 import json
 import operator
 import os
-import pathlib
 import sys
 from tkinter import Tk
 import xml.etree.ElementTree as ET
@@ -132,7 +130,7 @@ def get_data():
                                  key=lambda w: w.name)
 
     global ns_hotkeys_
-    options_file = find_options_file()
+    options_file = platform.find_options_file(app_)
     hotkeys = parse_hotkeys(options_file)
     hotkeys = map_command_names(hotkeys)
     ns_hotkeys_ = namespace_group_hotkeys(hotkeys)
@@ -294,18 +292,6 @@ def deduplicate_hotkeys(hotkeys):
         ids.add(hid)
         filtered.append(hotkey)
     return filtered
-
-def find_options_file():
-    CSIDL_APPDATA = 26
-    SHGFP_TYPE_CURRENT = 0
-    # SHGetFolderPath is deprecated, but SHGetKnownFolderPath is much more cumbersome to use.
-    # Could just use win32com in that case, to simplify things.
-    roaming_path_buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-    ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_APPDATA, 0, SHGFP_TYPE_CURRENT, roaming_path_buf)
-
-    roaming_path = pathlib.Path(roaming_path_buf.value)
-    options_path = roaming_path / 'Autodesk' / 'Neutron Platform' / 'Options' / app_.userId / 'NGlobalOptions.xml'
-    return options_path
 
 def parse_hotkeys(options_file):
     hotkeys = []
