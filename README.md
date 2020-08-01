@@ -5,6 +5,8 @@ A Fusion 360 script for showing all assigned keyboard shortcuts. Use it to share
 ![](screenshot.png)
 
 ## Installation
+Download the script from the [Releases](https://github.com/thomasa88/KeyboardShortcutsSimple/releases) page.
+
 Drop the directory in `%appdata%\Autodesk\Autodesk Fusion 360\API\Scripts` .
 
 Make sure the directory is named `KeyboardShortcutsSimple`, with no suffix.
