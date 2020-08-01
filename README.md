@@ -15,3 +15,6 @@ Make sure the directory is named `KeyboardShortcutsSimple`, with no suffix.
 
 Press Shift+S in Fusion 360 and go to the *Scripts* tab. Then double-click *KeyboardShortcutsSimple*.
 
+## "I cannot add a shortcut for *XYZ*"
+
+Have a look at [AnyShortcut](https://github.com/thomasa88/AnyShortcut/blob/master/README.md).
