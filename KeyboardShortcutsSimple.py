@@ -66,7 +66,7 @@ used_workspaces_ids_ = None
 sorted_workspaces_ = None
 ws_filter_map_ = None
 ns_hotkeys_ = None
-copy_button_args_ = ('copy', False,
+copy_button_args_ = ('Copy shown keys to clipboard', False,
                      thomasa88lib.utils.get_fusion_deploy_folder() + '/Electron/UI/Resources/Icons/Copy',
                      -1)
 
@@ -89,6 +89,9 @@ def list_command_created_handler(args):
     events_manager_.add_handler(cmd.inputChanged,
                                 adsk.core.InputChangedEventHandler,
                                 input_changed_handler)
+    events_manager_.add_handler(cmd.validateInputs,
+                                adsk.core.ValidateInputsEventHandler,
+                                validate_input_handler)
     events_manager_.add_handler(cmd.destroy,
                                 adsk.core.CommandEventHandler,
                                 destroy_handler)
@@ -117,9 +120,10 @@ def list_command_created_handler(args):
     inputs.addTextBoxCommandInput('list', '', get_hotkeys_str(only_user=only_user_input.value), 30, False)
     inputs.addTextBoxCommandInput('list_info', '', '* = User-defined', 1, True)
 
-    copy_input = inputs.addButtonRowCommandInput('copy', 'Copy to clipboard', False)
+    copy_input = inputs.addButtonRowCommandInput('copy', 'Copy', False)
     copy_input.isMultiSelectEnabled = False
     copy_input.listItems.add(*copy_button_args_)
+    copy_input.listItems.add('', False, './resources/noicon', -1)
 
 def get_data():
     # Build on every invocation, in case keys have changed
@@ -151,10 +155,6 @@ def input_changed_handler(args):
 
     if eventArgs.input.id == 'copy':
         copy_input = eventArgs.input
-        # Does not work: copy_input.listItems[0].isSelected = False
-        #copy_button = copy_input.listItems[0]
-        copy_input.listItems.clear()
-        copy_input.listItems.add(*copy_button_args_)
         copy_to_clipboard(get_hotkeys_str(only_user_input.value, workspace_filter,
                                           sort_by_key=shortcut_sort_input.value,
                                           html=False))
@@ -162,6 +162,13 @@ def input_changed_handler(args):
         # Update list
         list_input.formattedText = get_hotkeys_str(only_user_input.value, workspace_filter,
                                                    sort_by_key=shortcut_sort_input.value)
+
+def validate_input_handler(args):
+    eventArgs = adsk.core.ValidateInputsEventArgs.cast(args)
+
+    # Unselect the copy button, so it can be selected again
+    copy_input = eventArgs.inputs.itemById('copy')
+    copy_input.listItems[1].isSelected = True
 
 def destroy_handler(args):
     # Force the termination of the command.
